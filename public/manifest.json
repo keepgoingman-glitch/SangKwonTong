@@ -1,0 +1,11 @@
+{
+  "name": "상권통",
+  "short_name": "상권통",
+  "description": "우리 동네 통신 혜택 — KT 상권통",
+  "start_url": ".",
+  "scope": ".",
+  "display": "browser",
+  "orientation": "portrait",
+  "background_color": "#0B4FCB",
+  "theme_color": "#0B4FCB"
+}
