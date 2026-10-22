@@ -1352,17 +1352,19 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
   const ySuc=allMM.reduce((a,m)=>a+(m.annual?.success||0),0)
   const wkTarget=mmCount*5*5
 
-  // 상품 분류: 인터넷 / TV-M / TV-B / 모바일(+USIM) / 기타 (구버전 명칭 호환)
+  // 상품 분류(7분류): 인터넷 / TV-M / TV-B / 모바일 / 하이오더 / 약정갱신 / 기타(전화·USIM·CCTV·로봇·기타) (구버전 명칭 호환)
   function prodGroup(pc){
     const inet=pc['인터넷']||0
     const tv=(pc['TV-M']||0)+(pc['TV']||0)            // 구 'TV' → TV-M
     const tvbiz=(pc['TV-B']||0)+(pc['다량회선']||0)    // 구 '다량회선' → TV-B
     const mob=(pc['모바일']||0)                        // 모바일만 (USIM은 기타로 분류 → 상세표와 일치)
-    const known=['인터넷','TV-M','TV','TV-B','다량회선','모바일']
+    const hio=pc['하이오더']||0
+    const rw=pc['약정갱신']||0
+    const known=['인터넷','TV-M','TV','TV-B','다량회선','모바일','하이오더','약정갱신']
     const etc=Object.entries(pc).filter(([k])=>!known.includes(k)).reduce((a,[,v])=>a+v,0)
-    return {inet,tv,tvbiz,mob,etc,total:inet+tv+tvbiz+mob+etc}
+    return {inet,tv,tvbiz,mob,hio,rw,etc,total:inet+tv+tvbiz+mob+hio+rw+etc}
   }
-  // 상세표 11개 항목 (구버전 명칭은 신버전에 합산하여 5분류표와 합계 일치)
+  // 상세표 11개 항목 (구버전 명칭은 신버전에 합산하여 7분류표와 합계 일치)
   const DETAIL_PRODS=['인터넷','TV-M','TV-B','모바일','USIM','전화','약정갱신','기타','하이오더','로봇','CCTV']
   function prodVal(pc,prod){
     pc=pc||{}
@@ -1379,6 +1381,8 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
   table{border-collapse:collapse;width:100%}
   th{background:#16213e;color:#fff;padding:8px 6px;font-size:12px;font-weight:700;border:1px solid #2a3a5c;text-align:center}
   td{padding:7px 6px;font-size:12.5px;border:1px solid #e2e8f0;text-align:center;color:#1e293b}
+  .cmp th{padding:4px 6px}
+  .cmp td{padding:3px 6px}
   .ps-slide th{padding:4px 6px;font-size:11px}
   .ps-slide td{padding:3px 6px;font-size:11.5px}
   .rh{padding:16px 36px 10px;display:flex;justify-content:space-between;align-items:center}
@@ -1432,11 +1436,11 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
   const AN_MS = monthlySeries || []
   const AN_SUM = AN_MS.reduce((a,m)=>({act:a.act+m.act, suc:a.suc+m.success}),{act:0,suc:0})
   const AN_MOLABEL = m => m+'월'
-  // 상품 5분류 누계
+  // 상품 7분류 누계
   function anProdSum(){
-    const t={inet:0,tv:0,tvbiz:0,mob:0,etc:0}
+    const t={inet:0,tv:0,tvbiz:0,mob:0,hio:0,rw:0,etc:0}
     AN_MS.forEach(m=>{ const g=prodGroup(m.prodCounts||{})
-      t.inet+=g.inet; t.tv+=g.tv; t.tvbiz+=g.tvbiz; t.mob+=g.mob; t.etc+=g.etc })
+      t.inet+=g.inet; t.tv+=g.tv; t.tvbiz+=g.tvbiz; t.mob+=g.mob; t.hio+=g.hio; t.rw+=g.rw; t.etc+=g.etc })
     return t
   }
 
@@ -1456,7 +1460,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
       <div style="background:rgba(37,99,235,0.18);border:1px solid rgba(147,197,253,0.4);border-radius:14px;padding:16px 26px;min-width:132px">
         <div style="font-size:30px;font-weight:900;color:#93c5fd">${AN_SUM.act>0?Math.round(AN_SUM.suc/AN_SUM.act*100):0}%</div><div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px">누적 성공률</div></div>
       <div style="background:rgba(217,119,6,0.18);border:1px solid rgba(253,186,116,0.4);border-radius:14px;padding:16px 26px;min-width:132px">
-        <div style="font-size:30px;font-weight:900;color:#fdba74">${(()=>{const p=anProdSum();return p.inet+p.tv+p.tvbiz+p.mob+p.etc})()}</div><div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px">누적 수주 회선</div></div>
+        <div style="font-size:30px;font-weight:900;color:#fdba74">${(()=>{const p=anProdSum();return p.inet+p.tv+p.tvbiz+p.mob+p.hio+p.rw+p.etc})()}</div><div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px">누적 수주 회선</div></div>
     </div>` : ''}
     <div style="display:flex;gap:16px;justify-content:center">
       ${((isAnnual&&annualTeams&&annualTeams.length)?annualTeams:teams).map(t=>`<div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:18px 30px;min-width:200px">
@@ -1477,7 +1481,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
   // ════ S2: 핵심 성과 요약 (팀별 표 + 좌측 상품 컬럼) ════
   const teamProdRows = teams.map(t=>({t, pg:prodGroup(t.monthly?.prodCounts||{})}))
   const allProdMonthly = prodGroup(teamProdRows.reduce((acc,{pg})=>({
-    '인터넷':(acc['인터넷']||0)+pg.inet,'TV':(acc['TV']||0)+pg.tv,'다량회선':(acc['다량회선']||0)+pg.tvbiz,'모바일':(acc['모바일']||0)+pg.mob,'기타':(acc['기타']||0)+pg.etc
+    '인터넷':(acc['인터넷']||0)+pg.inet,'TV':(acc['TV']||0)+pg.tv,'다량회선':(acc['다량회선']||0)+pg.tvbiz,'모바일':(acc['모바일']||0)+pg.mob,'하이오더':(acc['하이오더']||0)+pg.hio,'약정갱신':(acc['약정갱신']||0)+pg.rw,'기타':(acc['기타']||0)+pg.etc
   }),{}))
 
   const s2=`<div class="slide" id="s2">
@@ -1519,13 +1523,13 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
         <tr>
           <th rowspan="2" style="width:75px">팀</th>
           <th rowspan="2">MM</th>
-          <th colspan="5" style="background:#b45309">상품별 성과 (월간, 회선)</th>
+          <th colspan="7" style="background:#b45309">상품별 성과 (월간, 회선)</th>
           ${isPast?'':'<th colspan="4" style="background:#1d4ed8">주간 (이번주)</th>'}
           <th colspan="4" style="background:#15803d">${isPast?'월마감':'월간'}</th>
           <th colspan="3" style="background:#7c3aed">연간 누적</th>
         </tr>
         <tr>
-          <th style="background:#d97706">인터넷</th><th style="background:#d97706">TV-M</th><th style="background:#d97706">TV-B</th><th style="background:#d97706">모바일</th><th style="background:#d97706">기타</th>
+          <th style="background:#d97706">인터넷</th><th style="background:#d97706">TV-M</th><th style="background:#d97706">TV-B</th><th style="background:#d97706">모바일</th><th style="background:#d97706">하이오더</th><th style="background:#d97706">약정갱신</th><th style="background:#d97706">기타</th>
           ${isPast?'':'<th style="background:#2563eb">목표</th><th style="background:#2563eb">활동</th><th style="background:#2563eb">활동률</th><th style="background:#2563eb">성공/률</th>'}
           <th style="background:#16a34a">월목표</th><th style="background:#16a34a">활동</th><th style="background:#16a34a">활동률</th><th style="background:#16a34a">성공/률</th>
           <th style="background:#9333ea">활동</th><th style="background:#9333ea">성공</th><th style="background:#9333ea">성공률</th>
@@ -1537,14 +1541,14 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
           const tGoal=t.mm*perMMTarget, twGoal=t.mm*5*5
           return `<tr>
           <td style="font-weight:800">${t.label}</td><td>${t.mm}명</td>
-          <td class="prod-bg" style="font-weight:800;color:#b45309">${pg.inet||'-'}</td><td class="prod-bg" style="font-weight:700">${pg.tv||'-'}</td><td class="prod-bg" style="font-weight:700">${pg.tvbiz||'-'}</td><td class="prod-bg" style="font-weight:700">${pg.mob||'-'}</td><td class="prod-bg" style="color:#64748b">${pg.etc||'-'}</td>
+          <td class="prod-bg" style="font-weight:800;color:#b45309">${pg.inet||'-'}</td><td class="prod-bg" style="font-weight:700">${pg.tv||'-'}</td><td class="prod-bg" style="font-weight:700">${pg.tvbiz||'-'}</td><td class="prod-bg" style="font-weight:700">${pg.mob||'-'}</td><td class="prod-bg" style="font-weight:700">${pg.hio||'-'}</td><td class="prod-bg" style="font-weight:700">${pg.rw||'-'}</td><td class="prod-bg" style="color:#64748b">${pg.etc||'-'}</td>
           ${isPast?'':`<td class="wk-bg">${twGoal}건</td><td class="wk-bg bc">${tw.actAll||0}건</td><td class="wk-bg oc">${pct(tw.actAll||0,twGoal)}%</td><td class="wk-bg gc">${tw.success||0}건/${sucRate(tw.success||0,tw.actAll||0)}%</td>`}
           <td class="mo-bg">${tGoal}건</td><td class="mo-bg bc">${tm2.actAll||0}건</td><td class="mo-bg">${pct(tm2.actAll||0,tGoal)}%</td><td class="mo-bg gc">${tm2.success||0}건/${sucRate(tm2.success||0,tm2.actAll||0)}%</td>
           <td class="yr-bg bc">${ty.actAll||0}건</td><td class="yr-bg gc">${ty.success||0}건</td><td class="yr-bg">${sucRate(ty.success||0,ty.actAll||0)}%</td>
         </tr>`}).join('')}
         <tr style="font-weight:900">
           <td style="background:#16213e;color:#fff">전 체</td><td style="background:#16213e;color:#fff">${mmCount}명</td>
-          <td style="background:#b45309;color:#fff">${allProdMonthly.inet||'-'}</td><td style="background:#b45309;color:#fff">${allProdMonthly.tv||'-'}</td><td style="background:#b45309;color:#fff">${allProdMonthly.tvbiz||'-'}</td><td style="background:#b45309;color:#fff">${allProdMonthly.mob||'-'}</td><td style="background:#b45309;color:#fff">${allProdMonthly.etc||'-'}</td>
+          <td style="background:#b45309;color:#fff">${allProdMonthly.inet||'-'}</td><td style="background:#b45309;color:#fff">${allProdMonthly.tv||'-'}</td><td style="background:#b45309;color:#fff">${allProdMonthly.tvbiz||'-'}</td><td style="background:#b45309;color:#fff">${allProdMonthly.mob||'-'}</td><td style="background:#b45309;color:#fff">${allProdMonthly.hio||'-'}</td><td style="background:#b45309;color:#fff">${allProdMonthly.rw||'-'}</td><td style="background:#b45309;color:#fff">${allProdMonthly.etc||'-'}</td>
           ${isPast?'':`<td style="background:#1d4ed8;color:#fff">${wkTarget}건</td><td style="background:#1d4ed8;color:#bfdbfe">${wAct}건</td><td style="background:#1d4ed8;color:#fff">${pct(wAct,wkTarget)}%</td><td style="background:#1d4ed8;color:#86efac">${wSuc}건/${sucRate(wSuc,wAct)}%</td>`}
           <td style="background:#15803d;color:#fff">${totalMonthTarget}건</td><td style="background:#15803d;color:#bbf7d0">${mAct}건</td><td style="background:#15803d;color:#fff">${pct(mAct,totalMonthTarget)}%</td><td style="background:#15803d;color:#bbf7d0">${mSuc}건/${sucRate(mSuc,mAct)}%</td>
           <td style="background:#7c3aed;color:#e9d5ff">${yAct}건</td><td style="background:#7c3aed;color:#e9d5ff">${ySuc}건</td><td style="background:#7c3aed;color:#fff">${sucRate(ySuc,yAct)}%</td>
@@ -1781,9 +1785,9 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
     // 활동/성공 = 현장 단계 기준 (영업중·영업종료=활동, 영업종료=성공)
     const active=sites.filter(m=>['영업중','영업종료'].includes(m.stage||'')).length
     const success=sites.filter(m=>(m.stage||'')==='영업종료').length
-    // 상품 5분류: 인터넷=net, TV-M=tv, 약정갱신은 기타로, 모바일=mob
-    const pg={inet:net, tv:tv, tvbiz:0, mob:mob, etc:renew, total:net+tv+mob+renew}          // 월간(표의 상품 칸)
-    const pgAll={inet:aNet, tv:aTv, tvbiz:0, mob:aMob, etc:aRenew, total:aNet+aTv+aMob+aRenew} // 누적(참고용)
+    // 상품 7분류: 인터넷=net, TV-M=tv, 약정갱신=renew, 모바일=mob
+    const pg={inet:net, tv:tv, tvbiz:0, mob:mob, hio:0, rw:renew, etc:0, total:net+tv+mob+renew}          // 월간(표의 상품 칸)
+    const pgAll={inet:aNet, tv:aTv, tvbiz:0, mob:aMob, hio:0, rw:aRenew, etc:0, total:aNet+aTv+aMob+aRenew} // 누적(참고용)
     return { siteCount:sites.length, active, success, pg, pgAll }
   }
   const _mp = mPlusAggForP4()
@@ -1805,8 +1809,8 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
   })
   const sumRow=projRows.reduce((a,r)=>({
     wD:a.wD+r.wD,wS:a.wS+r.wS,mD:a.mD+r.mD,mS:a.mS+r.mS,yD:a.yD+r.yD,yS:a.yS+r.yS,
-    inet:a.inet+r.pg.inet,tv:a.tv+r.pg.tv,tvbiz:a.tvbiz+r.pg.tvbiz,mob:a.mob+r.pg.mob,etc:a.etc+r.pg.etc
-  }),{wD:0,wS:0,mD:0,mS:0,yD:0,yS:0,inet:0,tv:0,tvbiz:0,mob:0,etc:0})
+    inet:a.inet+r.pg.inet,tv:a.tv+r.pg.tv,tvbiz:a.tvbiz+r.pg.tvbiz,mob:a.mob+r.pg.mob,hio:a.hio+r.pg.hio,rw:a.rw+r.pg.rw,etc:a.etc+r.pg.etc
+  }),{wD:0,wS:0,mD:0,mS:0,yD:0,yS:0,inet:0,tv:0,tvbiz:0,mob:0,hio:0,rw:0,etc:0})
 
   const s3=`<div class="slide" id="s3">
   ${rh('프로젝트별 종합 현황', (isPast?'월마감 → 누적':'주간 → 월간 → 누적')+' + 상품별 실적 (월간)', 4)}
@@ -1826,7 +1830,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
           ${isPast?'':'<th style="background:#2563eb">활동</th><th style="background:#2563eb">성공</th>'}
           <th style="background:#16a34a">활동</th><th style="background:#16a34a">성공</th><th style="background:#16a34a">성공률</th>
           <th style="background:#9333ea">활동</th><th style="background:#9333ea">성공</th>
-          <th style="background:#d97706">인터넷</th><th style="background:#d97706">TV-M</th><th style="background:#d97706">TV-B</th><th style="background:#d97706">모바일</th><th style="background:#d97706">기타</th><th style="background:#92400e">합계</th>
+          <th style="background:#d97706">인터넷</th><th style="background:#d97706">TV-M</th><th style="background:#d97706">TV-B</th><th style="background:#d97706">모바일</th><th style="background:#d97706">하이오더</th><th style="background:#d97706">약정갱신</th><th style="background:#d97706">기타</th><th style="background:#92400e">합계</th>
         </tr>
       </thead>
       <tbody>
@@ -1837,7 +1841,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
           ${isPast?'':`<td class="wk-bg bc">${wD}</td><td class="wk-bg gc">${wS}</td>`}
           <td class="mo-bg bc">${mD}</td><td class="mo-bg gc">${mS}</td><td class="mo-bg">${sucRate(mS,mD)}%</td>
           <td class="yr-bg bc">${yD}</td><td class="yr-bg gc">${yS}</td>
-          <td class="prod-bg">${pg.inet||'-'}</td><td class="prod-bg">${pg.tv||'-'}</td><td class="prod-bg">${pg.tvbiz||'-'}</td><td class="prod-bg">${pg.mob||'-'}</td><td class="prod-bg">${pg.etc||'-'}</td>
+          <td class="prod-bg">${pg.inet||'-'}</td><td class="prod-bg">${pg.tv||'-'}</td><td class="prod-bg">${pg.tvbiz||'-'}</td><td class="prod-bg">${pg.mob||'-'}</td><td class="prod-bg">${pg.hio||'-'}</td><td class="prod-bg">${pg.rw||'-'}</td><td class="prod-bg">${pg.etc||'-'}</td>
           <td class="prod-bg-alt" style="font-weight:900;color:#92400e">${pg.total||'-'}</td>
         </tr>`).join('')}
         <tr style="font-weight:900">
@@ -1846,8 +1850,8 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
           ${isPast?'':`<td style="background:#1d4ed8;color:#fff">${sumRow.wD}</td><td style="background:#1d4ed8;color:#86efac">${sumRow.wS}</td>`}
           <td style="background:#15803d;color:#fff">${sumRow.mD}</td><td style="background:#15803d;color:#bbf7d0">${sumRow.mS}</td><td style="background:#15803d;color:#fff">${sucRate(sumRow.mS,sumRow.mD)}%</td>
           <td style="background:#7c3aed;color:#fff">${sumRow.yD}</td><td style="background:#7c3aed;color:#e9d5ff">${sumRow.yS}</td>
-          <td style="background:#b45309;color:#fff">${sumRow.inet}</td><td style="background:#b45309;color:#fff">${sumRow.tv}</td><td style="background:#b45309;color:#fff">${sumRow.tvbiz}</td><td style="background:#b45309;color:#fff">${sumRow.mob}</td><td style="background:#b45309;color:#fff">${sumRow.etc}</td>
-          <td style="background:#92400e;color:#fff">${sumRow.inet+sumRow.tv+sumRow.tvbiz+sumRow.mob+sumRow.etc}</td>
+          <td style="background:#b45309;color:#fff">${sumRow.inet}</td><td style="background:#b45309;color:#fff">${sumRow.tv}</td><td style="background:#b45309;color:#fff">${sumRow.tvbiz}</td><td style="background:#b45309;color:#fff">${sumRow.mob}</td><td style="background:#b45309;color:#fff">${sumRow.hio}</td><td style="background:#b45309;color:#fff">${sumRow.rw}</td><td style="background:#b45309;color:#fff">${sumRow.etc}</td>
+          <td style="background:#92400e;color:#fff">${sumRow.inet+sumRow.tv+sumRow.tvbiz+sumRow.mob+sumRow.hio+sumRow.rw+sumRow.etc}</td>
         </tr>
       </tbody>
     </table>
@@ -1915,6 +1919,8 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
           <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:9px 15px;text-align:center;min-width:78px"><div style="font-size:19px;font-weight:900;color:#d97706">${pg.tv}</div><div style="font-size:10.5px;color:#64748b">TV-M</div></div>
           <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:9px 15px;text-align:center;min-width:78px"><div style="font-size:19px;font-weight:900;color:#ea580c">${pg.tvbiz}</div><div style="font-size:10.5px;color:#64748b">TV-B</div></div>
           <div style="background:#ede9fe;border:1px solid #ddd6fe;border-radius:10px;padding:9px 15px;text-align:center;min-width:78px"><div style="font-size:19px;font-weight:900;color:#7c3aed">${pg.mob}</div><div style="font-size:10.5px;color:#64748b">모바일</div></div>
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:9px 15px;text-align:center;min-width:78px"><div style="font-size:19px;font-weight:900;color:#d97706">${pg.hio}</div><div style="font-size:10.5px;color:#64748b">하이오더</div></div>
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:9px 15px;text-align:center;min-width:78px"><div style="font-size:19px;font-weight:900;color:#16a34a">${pg.rw}</div><div style="font-size:10.5px;color:#64748b">약정갱신</div></div>
           <div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;padding:9px 15px;text-align:center;min-width:78px"><div style="font-size:19px;font-weight:900;color:#475569">${pg.etc}</div><div style="font-size:10.5px;color:#64748b">기타</div></div>
           <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:9px 15px;text-align:center;min-width:78px"><div style="font-size:19px;font-weight:900;color:#15803d">${pg.total}</div><div style="font-size:10.5px;color:#15803d;font-weight:700">합계 회선</div></div>
         </div>
@@ -2120,14 +2126,14 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
     function _ms2(dt){if(!dt)return -1;try{const t=new Date(dt).getTime();return isNaN(t)?-1:t}catch{return -1}}
     const mr = psMonthRange
     const inMonth = l => { if(!mr) return true; const t=_ms2(l.activity_at||l.activation_date||l.created_at); return t>=mr.start&&t<=mr.end }
-    // 한 건의 won_products → 5분류 상품별 회선수
+    // 한 건의 won_products → 7분류 상품별 회선수
     function prodOf(l){
       const pc={}
       try{const wp=JSON.parse(l.won_products||'null')
         if(wp&&!Array.isArray(wp)){Object.entries(wp).forEach(([p,v])=>{pc[p]=(pc[p]||0)+Number(v||0)})}
         else if(Array.isArray(wp)){wp.forEach(p=>{pc[p]=(pc[p]||0)+1})}
       }catch{}
-      return prodGroup(pc)  // {inet,tv,tvbiz,mob,etc,total}
+      return prodGroup(pc)  // {inet,tv,tvbiz,mob,hio,rw,etc,total}
     }
     // M플러스 현장 1곳의 daily_records → 상품 집계 (월간이면 당월 레코드만)
     function mPlusProdOf(m, onlyMonth){
@@ -2139,7 +2145,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
           mob+=Number(r.wireChange||0)+Number(r.mnp||0)+Number(r.second||0)
         })
       }catch{}
-      return {inet:net, tv:tv, tvbiz:0, mob:mob, etc:renew, total:net+tv+mob+renew}
+      return {inet:net, tv:tv, tvbiz:0, mob:mob, hio:0, rw:renew, etc:0, total:net+tv+mob+renew}
     }
     // 성공+대리점 건 수집 → 유형별 상품 집계 (배분 + 직접발굴 + M플러스 현장)
     const collect = (onlyMonth) => {
@@ -2156,13 +2162,13 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
     const aggregate = (arr) => {
       const byType={}
       arr.forEach(s=>{
-        if(!byType[s.type])byType[s.type]={inet:0,tv:0,tvbiz:0,mob:0,etc:0,total:0,count:0,agencies:{}}
+        if(!byType[s.type])byType[s.type]={inet:0,tv:0,tvbiz:0,mob:0,hio:0,rw:0,etc:0,total:0,count:0,agencies:{}}
         const b=byType[s.type]
-        b.inet+=s.pg.inet; b.tv+=s.pg.tv; b.tvbiz+=s.pg.tvbiz; b.mob+=s.pg.mob; b.etc+=s.pg.etc; b.total+=s.pg.total; b.count++
+        b.inet+=s.pg.inet; b.tv+=s.pg.tv; b.tvbiz+=s.pg.tvbiz; b.mob+=s.pg.mob; b.hio+=s.pg.hio; b.rw+=s.pg.rw; b.etc+=s.pg.etc; b.total+=s.pg.total; b.count++
         b.agencies[s.name]=(b.agencies[s.name]||0)+1
       })
-      const tot={inet:0,tv:0,tvbiz:0,mob:0,etc:0,total:0,count:arr.length}
-      Object.values(byType).forEach(b=>{tot.inet+=b.inet;tot.tv+=b.tv;tot.tvbiz+=b.tvbiz;tot.mob+=b.mob;tot.etc+=b.etc;tot.total+=b.total})
+      const tot={inet:0,tv:0,tvbiz:0,mob:0,hio:0,rw:0,etc:0,total:0,count:arr.length}
+      Object.values(byType).forEach(b=>{tot.inet+=b.inet;tot.tv+=b.tv;tot.tvbiz+=b.tvbiz;tot.mob+=b.mob;tot.hio+=b.hio;tot.rw+=b.rw;tot.etc+=b.etc;tot.total+=b.total})
       return { byType, tot }
     }
     const monthData = aggregate(collect(true))
@@ -2176,18 +2182,18 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
       return `
       <div style="font-size:13px;font-weight:800;color:${accent};margin-bottom:6px">${label} <span style="font-size:11px;color:#94a3b8;font-weight:400">— 성공 ${data.tot.count}건 · 총 ${data.tot.total}회선</span></div>
       <table>
-        <thead><tr><th style="text-align:left;padding-left:10px">대리점 유형</th><th style="background:#1d4ed8">인터넷</th><th style="background:#d97706">TV-M</th><th style="background:#ea580c">TV-B</th><th style="background:#7c3aed">모바일</th><th style="background:#64748b">기타</th><th style="background:#15803d">합계</th></tr></thead>
+        <thead><tr><th style="text-align:left;padding-left:10px">대리점 유형</th><th style="background:#1d4ed8">인터넷</th><th style="background:#d97706">TV-M</th><th style="background:#ea580c">TV-B</th><th style="background:#7c3aed">모바일</th><th style="background:#64748b">하이오더</th><th style="background:#64748b">약정갱신</th><th style="background:#64748b">기타</th><th style="background:#15803d">합계</th></tr></thead>
         <tbody>
           ${dispTypes.length===0?`<tr><td colspan="7" style="color:#94a3b8;padding:14px">실적 없음</td></tr>`:dispTypes.map((t,i)=>{
-            const d=data.byType[t]||{inet:0,tv:0,tvbiz:0,mob:0,etc:0,total:0}
+            const d=data.byType[t]||{inet:0,tv:0,tvbiz:0,mob:0,hio:0,rw:0,etc:0,total:0}
             return `<tr style="background:${i%2?'#f8fafc':'#fff'}">
               <td style="text-align:left;font-weight:700;padding-left:10px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${typeColor[i%7]};margin-right:6px"></span>${t}</td>
-              <td class="${d.inet?'bc':''}">${d.inet||'-'}</td><td>${d.tv||'-'}</td><td>${d.tvbiz||'-'}</td><td>${d.mob||'-'}</td><td>${d.etc||'-'}</td>
+              <td class="${d.inet?'bc':''}">${d.inet||'-'}</td><td>${d.tv||'-'}</td><td>${d.tvbiz||'-'}</td><td>${d.mob||'-'}</td><td>${d.hio||'-'}</td><td>${d.rw||'-'}</td><td>${d.etc||'-'}</td>
               <td style="background:#f0fdf4;font-weight:900;color:#15803d">${d.total||'-'}</td>
             </tr>`}).join('')}
           <tr style="background:#16213e;color:#fff;font-weight:900">
             <td style="color:#fff;text-align:left;padding-left:10px">전 체</td>
-            <td style="color:#60a5fa">${data.tot.inet||'-'}</td><td style="color:#fff">${data.tot.tv||'-'}</td><td style="color:#fff">${data.tot.tvbiz||'-'}</td><td style="color:#fff">${data.tot.mob||'-'}</td><td style="color:#fff">${data.tot.etc||'-'}</td>
+            <td style="color:#60a5fa">${data.tot.inet||'-'}</td><td style="color:#fff">${data.tot.tv||'-'}</td><td style="color:#fff">${data.tot.tvbiz||'-'}</td><td style="color:#fff">${data.tot.mob||'-'}</td><td style="color:#fff">${data.tot.hio||'-'}</td><td style="color:#fff">${data.tot.rw||'-'}</td><td style="color:#fff">${data.tot.etc||'-'}</td>
             <td style="background:#166534;color:#fff">${data.tot.total||'-'}</td>
           </tr>
         </tbody>
@@ -2238,7 +2244,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
   // ── A1: 연간 핵심 성과 요약 ──
   function anSummarySlide(sn){
     const p=anProdSum()
-    const lines=p.inet+p.tv+p.tvbiz+p.mob+p.etc
+    const lines=p.inet+p.tv+p.tvbiz+p.mob+p.hio+p.rw+p.etc
     const rate=AN_SUM.act>0?Math.round(AN_SUM.suc/AN_SUM.act*100):0
     const tgt=annualTargetCalc||0
     const achv=tgt>0?Math.round(AN_SUM.suc/tgt*100):0
@@ -2293,14 +2299,14 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
   // ── A2: 월별 성과 추이 상세 ──
   function anMonthlySlide(sn){
     const p=anProdSum()
-    const totalLines=p.inet+p.tv+p.tvbiz+p.mob+p.etc
+    const totalLines=p.inet+p.tv+p.tvbiz+p.mob+p.hio+p.rw+p.etc
     return `<div class="slide" id="s${sn}">
   ${rh('월별 성과 추이', startMonth+'월 ~ '+(AN_MS.length?AN_MS[AN_MS.length-1].month:startMonth)+'월 · 활동 · 성공 · 상품별 회선', sn)}
   ${dbar}
   <div class="body">
-    <table style="font-size:12px">
+    <table class="cmp" style="font-size:12px">
       <thead><tr>
-        <th style="text-align:left;padding-left:12px;width:70px">구분</th>
+        <th style="text-align:left;padding-left:12px;width:84px;white-space:nowrap">구분</th>
         ${AN_MS.map(m=>`<th style="background:#1e293b">${AN_MOLABEL(m.month)}</th>`).join('')}
         <th style="background:#7c3aed;width:78px">누계</th>
       </tr></thead>
@@ -2321,20 +2327,20 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
           <td style="background:#eff6ff;font-weight:900;color:#2563eb">${AN_SUM.act>0?Math.round(AN_SUM.suc/AN_SUM.act*100):0}%</td>
         </tr>
         <tr style="background:#fffbeb"><td colspan="${AN_MS.length+2}" style="text-align:left;padding-left:12px;font-size:11px;font-weight:800;color:#92400e">상품별 회선</td></tr>
-        ${[['인터넷','inet','#1d4ed8'],['TV-M','tv','#0891b2'],['TV-B','tvbiz','#7c3aed'],['모바일','mob','#9333ea'],['기타','etc','#64748b']].map(([lbl,k,c])=>`
+        ${[['인터넷','inet','#1d4ed8'],['TV-M','tv','#0891b2'],['TV-B','tvbiz','#7c3aed'],['모바일','mob','#9333ea'],['하이오더','hio','#d97706'],['약정갱신','rw','#16a34a'],['기타','etc','#64748b']].map(([lbl,k,c])=>`
         <tr>
-          <td style="text-align:left;padding-left:20px;font-size:11.5px;color:${c};font-weight:700">${lbl}</td>
+          <td style="text-align:left;padding-left:20px;font-size:11.5px;color:${c};font-weight:700;white-space:nowrap">${lbl}</td>
           ${AN_MS.map(m=>{const g=prodGroup(m.prodCounts||{});return `<td style="font-size:11.5px">${g[k]||'-'}</td>`}).join('')}
           <td style="background:#fff7ed;font-weight:800;color:${c}">${p[k]||'-'}</td>
         </tr>`).join('')}
         <tr style="background:#16213e;color:#fff;font-weight:900">
           <td style="color:#fff;text-align:left;padding-left:12px">회선 계</td>
-          ${AN_MS.map(m=>{const g=prodGroup(m.prodCounts||{});return `<td style="color:#fff">${g.inet+g.tv+g.tvbiz+g.mob+g.etc||'-'}</td>`}).join('')}
+          ${AN_MS.map(m=>{const g=prodGroup(m.prodCounts||{});return `<td style="color:#fff">${g.inet+g.tv+g.tvbiz+g.mob+g.hio+g.rw+g.etc||'-'}</td>`}).join('')}
           <td style="background:#92400e;color:#fff">${totalLines}</td>
         </tr>
       </tbody>
     </table>
-    <div style="font-size:10.5px;color:#94a3b8;margin-top:5px">※ '기타' 항목의 상세 내역(하이오더 · 전화 · USIM · 로봇 · CCTV 등)은 <b style="color:#7c3aed">4P 상품별 상세 성과</b> 참조</div>
+    <div style="font-size:10.5px;color:#94a3b8;margin-top:5px">※ '기타' 항목의 상세 내역(전화 · USIM · CCTV · 로봇 · 기타)은 <b style="color:#7c3aed">4P 상품별 상세 성과</b> 참조</div>
     <div style="font-size:13px;font-weight:800;color:#16213e;margin:11px 0 4px">월별 활동량 추이</div>
     <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:8px 10px 4px">
       ${anBarChart(AN_MS,'act','#7c3aed',980,132)}
@@ -2409,9 +2415,9 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
       pg: prodGroup(t.annual?.prodCounts||{})
     }))
     const sum = rows.reduce((a,r)=>({act:a.act+r.act,suc:a.suc+r.suc,mm:a.mm+r.mm,
-      inet:a.inet+r.pg.inet,tv:a.tv+r.pg.tv,tvbiz:a.tvbiz+r.pg.tvbiz,mob:a.mob+r.pg.mob,etc:a.etc+r.pg.etc}),
-      {act:0,suc:0,mm:0,inet:0,tv:0,tvbiz:0,mob:0,etc:0})
-    const sumLines = sum.inet+sum.tv+sum.tvbiz+sum.mob+sum.etc
+      inet:a.inet+r.pg.inet,tv:a.tv+r.pg.tv,tvbiz:a.tvbiz+r.pg.tvbiz,mob:a.mob+r.pg.mob,hio:a.hio+r.pg.hio,rw:a.rw+r.pg.rw,etc:a.etc+r.pg.etc}),
+      {act:0,suc:0,mm:0,inet:0,tv:0,tvbiz:0,mob:0,hio:0,rw:0,etc:0})
+    const sumLines = sum.inet+sum.tv+sum.tvbiz+sum.mob+sum.hio+sum.rw+sum.etc
     return `<div class="slide" id="s${sn}">
   ${rh('팀별 연간 성과', yearStr+' '+startMonth+'월 ~ '+today+' 누계', sn)}
   ${dbar}
@@ -2420,7 +2426,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
       <thead><tr>
         <th style="text-align:left;padding-left:12px;width:120px">팀</th><th style="width:56px">MM</th>
         <th style="background:#7c3aed">누적 활동</th><th style="background:#16a34a">누적 성공</th><th style="background:#2563eb">성공률</th><th style="background:#0891b2">1인당 성공</th>
-        <th style="background:#d97706">인터넷</th><th style="background:#d97706">TV-M</th><th style="background:#d97706">TV-B</th><th style="background:#d97706">모바일</th><th style="background:#d97706">기타</th>
+        <th style="background:#d97706">인터넷</th><th style="background:#d97706">TV-M</th><th style="background:#d97706">TV-B</th><th style="background:#d97706">모바일</th><th style="background:#d97706">하이오더</th><th style="background:#d97706">약정갱신</th><th style="background:#d97706">기타</th>
         <th style="background:#92400e">회선 계</th>
       </tr></thead>
       <tbody>
@@ -2428,14 +2434,14 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
           <td style="text-align:left;font-weight:800;padding-left:12px">${r.name}</td><td>${r.mm}명</td>
           <td style="font-weight:700;color:#7c3aed">${r.act}</td><td style="font-weight:900;color:#16a34a;font-size:14px">${r.suc}</td>
           <td>${pct(r.suc,r.act)}%</td><td style="color:#0891b2;font-weight:800">${r.mm>0?Math.round(r.suc/r.mm):0}</td>
-          <td>${r.pg.inet||'-'}</td><td>${r.pg.tv||'-'}</td><td>${r.pg.tvbiz||'-'}</td><td>${r.pg.mob||'-'}</td><td>${r.pg.etc||'-'}</td>
-          <td style="font-weight:900;color:#92400e">${r.pg.inet+r.pg.tv+r.pg.tvbiz+r.pg.mob+r.pg.etc||'-'}</td>
+          <td>${r.pg.inet||'-'}</td><td>${r.pg.tv||'-'}</td><td>${r.pg.tvbiz||'-'}</td><td>${r.pg.mob||'-'}</td><td>${r.pg.hio||'-'}</td><td>${r.pg.rw||'-'}</td><td>${r.pg.etc||'-'}</td>
+          <td style="font-weight:900;color:#92400e">${r.pg.inet+r.pg.tv+r.pg.tvbiz+r.pg.mob+r.pg.hio+r.pg.rw+r.pg.etc||'-'}</td>
         </tr>`).join('')}
         <tr style="background:#16213e;color:#fff;font-weight:900">
           <td style="color:#fff;text-align:left;padding-left:12px">전 체</td><td style="color:#fff">${sum.mm}명</td>
           <td style="background:#5b21b6;color:#fff">${sum.act}</td><td style="background:#166534;color:#fff">${sum.suc}</td>
           <td style="color:#fff">${pct(sum.suc,sum.act)}%</td><td style="color:#fff">${sum.mm>0?Math.round(sum.suc/sum.mm):0}</td>
-          <td style="color:#fff">${sum.inet||'-'}</td><td style="color:#fff">${sum.tv||'-'}</td><td style="color:#fff">${sum.tvbiz||'-'}</td><td style="color:#fff">${sum.mob||'-'}</td><td style="color:#fff">${sum.etc||'-'}</td>
+          <td style="color:#fff">${sum.inet||'-'}</td><td style="color:#fff">${sum.tv||'-'}</td><td style="color:#fff">${sum.tvbiz||'-'}</td><td style="color:#fff">${sum.mob||'-'}</td><td style="color:#fff">${sum.hio||'-'}</td><td style="color:#fff">${sum.rw||'-'}</td><td style="color:#fff">${sum.etc||'-'}</td>
           <td style="background:#92400e;color:#fff">${sumLines}</td>
         </tr>
       </tbody>
@@ -2456,8 +2462,8 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
       pg:prodGroup(m.annual?.prodCounts||{})
     })).sort((a,b)=>b.suc-a.suc)
     const sum=rows.reduce((a,r)=>({act:a.act+r.act,suc:a.suc+r.suc,
-      inet:a.inet+r.pg.inet,tv:a.tv+r.pg.tv,tvbiz:a.tvbiz+r.pg.tvbiz,mob:a.mob+r.pg.mob,etc:a.etc+r.pg.etc}),
-      {act:0,suc:0,inet:0,tv:0,tvbiz:0,mob:0,etc:0})
+      inet:a.inet+r.pg.inet,tv:a.tv+r.pg.tv,tvbiz:a.tvbiz+r.pg.tvbiz,mob:a.mob+r.pg.mob,hio:a.hio+r.pg.hio,rw:a.rw+r.pg.rw,etc:a.etc+r.pg.etc}),
+      {act:0,suc:0,inet:0,tv:0,tvbiz:0,mob:0,hio:0,rw:0,etc:0})
     return `<div class="slide" id="s${sn}">
   ${rh('MM별 연간 성과', yearStr+' '+startMonth+'월 ~ '+today+' 누계 · 성공 순', sn)}
   ${dbar}
@@ -2466,12 +2472,12 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
       <thead><tr>
         <th style="width:36px">순위</th><th style="text-align:left;padding-left:10px;width:92px">MM</th><th style="width:78px">팀</th>
         <th style="background:#7c3aed">누적 활동</th><th style="background:#16a34a">누적 성공</th><th style="background:#2563eb">성공률</th><th style="background:#0891b2">월평균</th>
-        <th style="background:#d97706">인터넷</th><th style="background:#d97706">TV-M</th><th style="background:#d97706">TV-B</th><th style="background:#d97706">모바일</th><th style="background:#d97706">기타</th>
+        <th style="background:#d97706">인터넷</th><th style="background:#d97706">TV-M</th><th style="background:#d97706">TV-B</th><th style="background:#d97706">모바일</th><th style="background:#d97706">하이오더</th><th style="background:#d97706">약정갱신</th><th style="background:#d97706">기타</th>
         <th style="background:#92400e">회선</th>
       </tr></thead>
       <tbody>
         ${rows.slice(0,15).map((r,i)=>{
-          const line=r.pg.inet+r.pg.tv+r.pg.tvbiz+r.pg.mob+r.pg.etc
+          const line=r.pg.inet+r.pg.tv+r.pg.tvbiz+r.pg.mob+r.pg.hio+r.pg.rw+r.pg.etc
           const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)
           return `<tr style="background:${i%2?'#f8fafc':'#fff'}">
           <td style="font-weight:800">${medal}</td>
@@ -2479,14 +2485,14 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
           <td style="font-size:10.5px;color:#64748b">${r.team}</td>
           <td style="color:#7c3aed;font-weight:700">${r.act}</td><td style="color:#16a34a;font-weight:900;font-size:13px">${r.suc}</td>
           <td>${pct(r.suc,r.act)}%</td><td style="color:#0891b2;font-weight:700">${Math.round(r.suc/nMon*10)/10}</td>
-          <td>${r.pg.inet||'-'}</td><td>${r.pg.tv||'-'}</td><td>${r.pg.tvbiz||'-'}</td><td>${r.pg.mob||'-'}</td><td>${r.pg.etc||'-'}</td>
+          <td>${r.pg.inet||'-'}</td><td>${r.pg.tv||'-'}</td><td>${r.pg.tvbiz||'-'}</td><td>${r.pg.mob||'-'}</td><td>${r.pg.hio||'-'}</td><td>${r.pg.rw||'-'}</td><td>${r.pg.etc||'-'}</td>
           <td style="font-weight:800;color:#92400e">${line||'-'}</td></tr>`}).join('')}
         <tr style="background:#16213e;color:#fff;font-weight:900">
           <td colspan="3" style="color:#fff;text-align:left;padding-left:10px">전 체 (${rows.length}명)</td>
           <td style="background:#5b21b6;color:#fff">${sum.act}</td><td style="background:#166534;color:#fff">${sum.suc}</td>
           <td style="color:#fff">${pct(sum.suc,sum.act)}%</td><td style="color:#fff">${Math.round(sum.suc/nMon*10)/10}</td>
-          <td style="color:#fff">${sum.inet||'-'}</td><td style="color:#fff">${sum.tv||'-'}</td><td style="color:#fff">${sum.tvbiz||'-'}</td><td style="color:#fff">${sum.mob||'-'}</td><td style="color:#fff">${sum.etc||'-'}</td>
-          <td style="background:#92400e;color:#fff">${sum.inet+sum.tv+sum.tvbiz+sum.mob+sum.etc}</td>
+          <td style="color:#fff">${sum.inet||'-'}</td><td style="color:#fff">${sum.tv||'-'}</td><td style="color:#fff">${sum.tvbiz||'-'}</td><td style="color:#fff">${sum.mob||'-'}</td><td style="color:#fff">${sum.hio||'-'}</td><td style="color:#fff">${sum.rw||'-'}</td><td style="color:#fff">${sum.etc||'-'}</td>
+          <td style="background:#92400e;color:#fff">${sum.inet+sum.tv+sum.tvbiz+sum.mob+sum.hio+sum.rw+sum.etc}</td>
         </tr>
       </tbody>
     </table>
@@ -2520,7 +2526,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
   ${dbar}
   <div class="body">
     <div style="font-size:12.5px;font-weight:800;color:#16213e;margin-bottom:5px">월별 × 상품별 수주 회선</div>
-    <table style="font-size:11.5px;margin-bottom:11px">
+    <table class="cmp" style="font-size:11.5px;margin-bottom:8px">
       <thead><tr>
         <th style="text-align:left;padding-left:12px;width:96px">상품</th>
         ${AN_MS.map(m=>`<th style="background:#1e293b;width:52px">${AN_MOLABEL(m.month)}</th>`).join('')}
@@ -2541,7 +2547,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
       </tbody>
     </table>
     <div style="font-size:12.5px;font-weight:800;color:#16213e;margin-bottom:5px">팀별 × 상품별 수주 회선</div>
-    <table style="font-size:11.5px">
+    <table class="cmp" style="font-size:11.5px">
       <thead><tr>
         <th style="text-align:left;padding-left:12px;width:96px">팀</th>
         ${detailRows.map(r=>`<th style="background:${PCOLOR[r.name]||'#475569'};width:52px">${r.name}</th>`).join('')}
@@ -2570,7 +2576,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
         <div style="font-size:11.5px;color:#64748b;margin-top:1px">${r.total}회선 · ${grand>0?Math.round(r.total/grand*100):0}%</div>
       </div>`).join('')}
     </div>
-    <div style="margin-top:8px;font-size:10.5px;color:#94a3b8">※ 5분류표의 '기타'는 위 표에서 USIM·전화·약정갱신·하이오더·로봇·CCTV 등으로 세분화됨 · 회선수 미입력 건은 상품당 1회선</div>
+    <div style="margin-top:8px;font-size:10.5px;color:#94a3b8">※ 7분류표의 '기타'는 위 표의 전화·USIM·CCTV·로봇·기타 합계 · 회선수 미입력 건은 상품당 1회선</div>
   </div>
   ${ftr(sn)}
 </div>`
