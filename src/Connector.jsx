@@ -1194,12 +1194,12 @@ export default function Connector({ onBack, initialTab }) {
       // mm_direct_leads: photos 제외 + 팀 필터 (mm_users 로드 후 필터)
       const [u, l, dlRaw, md, qrP, qrS, qrL, agcy] = await Promise.all([
         db.get('mm_users', uq),
-        db.get('connector_leads', lq),
-        db.get('mm_direct_leads', dSel + '&order=created_at.desc&limit=2000'),
-        db.get('m_discovery', mdq).catch(() => []),
+        db.getAll('connector_leads', lq),
+        db.getAll('mm_direct_leads', dSel + '&order=created_at.desc'),
+        db.getAll('m_discovery', mdq).catch(() => []),
         db.get('qr_partners', 'select=id,username,name,team_id,qr_code,created_at&order=created_at.desc').catch(() => []),
-        db.get('qr_stores', 'select=*&order=created_at.desc&limit=1000').catch(() => []),
-        db.get('qr_leads', 'select=*&order=created_at.desc&limit=2000').catch(() => []),
+        db.getAll('qr_stores', 'select=*&order=created_at.desc').catch(() => []),
+        db.getAll('qr_leads', 'select=*&order=created_at.desc').catch(() => []),
         db.get('agencies', 'select=*&order=type.asc,name.asc').catch(() => [])
       ])
       // 팀관리자: mm_direct_leads을 해당 팀 MM만 필터

@@ -665,9 +665,9 @@ export default function MM({onBack}){
       }
       const u=matched[0]
       const [cl,ml,disc,agcy,ord]=await Promise.all([
-        db.get('connector_leads','select=id,col1,col2,col3,col4,col5,address,products,assigned_to,assign_status,activity_status,activity_result,activity_memo,activity_contact,activity_at,team_id,project_name,theme_name,project_type,won_products,won_lines,circuit_number,activation_date,agency_type,agency_name&assigned_to=eq.'+encodeURIComponent(u.name)+'&order=created_at.desc&limit=500'),
-        db.get('mm_direct_leads','select=id,mm_username,customer,address,contact,products,note,project_type,activity_status,activity_result,activity_memo,activity_contact,activity_at,created_at,won_products,won_lines,circuit_number,activation_date,agency_type,agency_name&mm_username=eq.'+u.username+'&order=created_at.desc&limit=200'),
-        db.get('m_discovery','select=*&registered_by=eq.'+encodeURIComponent(u.name)+'&order=created_at.desc').catch(()=>[]),
+        db.getAll('connector_leads','select=id,col1,col2,col3,col4,col5,address,products,assigned_to,assign_status,activity_status,activity_result,activity_memo,activity_contact,activity_at,team_id,project_name,theme_name,project_type,won_products,won_lines,circuit_number,activation_date,agency_type,agency_name&assigned_to=eq.'+encodeURIComponent(u.name)+'&order=created_at.desc&limit=500'),
+        db.getAll('mm_direct_leads','select=id,mm_username,customer,address,contact,products,note,project_type,activity_status,activity_result,activity_memo,activity_contact,activity_at,created_at,won_products,won_lines,circuit_number,activation_date,agency_type,agency_name&mm_username=eq.'+u.username+'&order=created_at.desc&limit=200'),
+        db.getAll('m_discovery','select=*&registered_by=eq.'+encodeURIComponent(u.name)+'&order=created_at.desc').catch(()=>[]),
         db.get('agencies','select=*&order=type.asc,name.asc').catch(()=>[]),
         db.get('mm_orders','select=*&mm_username=eq.'+u.username+'&order=created_at.desc&limit=100').catch(()=>[])
       ])

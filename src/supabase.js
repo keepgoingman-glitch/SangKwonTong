@@ -25,6 +25,26 @@ export const db = {
     if (!res.ok) throw new Error(await res.text())
     return res.json()
   },
+  // 전체 조회: Supabase API는 1회 최대 1000건만 반환하므로 페이지 단위로 끝까지 받아옴
+  // query의 limit은 무시(전체 조회), order가 있으면 페이지 경계 안정화를 위해 id를 보조 정렬키로 추가
+  getAll: async (table, query = '', pageSize = 1000) => {
+    const params = (query || '').split('&').filter(p => p && !/^(limit|offset)=/.test(p))
+      .map(p => (p.startsWith('order=') && !/(^|[=,])id\./.test(p)) ? p + ',id.asc' : p)
+    if (!params.some(p => p.startsWith('order='))) params.push('order=id.asc')
+    const base = params.join('&')
+    let all = []
+    for (let offset = 0; offset < 100000; offset += pageSize) {
+      const res = await fetchWithTimeout(
+        `${URL}/rest/v1/${table}?${base}&limit=${pageSize}&offset=${offset}`,
+        { headers: h() }
+      )
+      if (!res.ok) throw new Error(await res.text())
+      const rows = await res.json()
+      all = all.concat(rows)
+      if (rows.length < pageSize) break
+    }
+    return all
+  },
   post: async (table, body) => {
     const res = await fetchWithTimeout(
       `${URL}/rest/v1/${table}`,
