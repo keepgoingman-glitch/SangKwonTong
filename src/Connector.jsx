@@ -2394,7 +2394,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
         <div style="font-size:12px;color:#64748b;margin-top:2px">${r.total}건 · 전체의 ${grand>0?Math.round(r.total/grand*100):0}%</div>
       </div>`).join('')}
     </div>
-    <div style="margin-top:9px;font-size:11px;color:#94a3b8">※ 색이 진할수록 해당 월 실적이 높음 · 성공 건수 기준 · M플러스는 영업기회 등록 기준</div>
+    <div style="margin-top:9px;font-size:11px;color:#94a3b8">※ 색이 진할수록 해당 월 실적이 높음 · 성공 건수 기준 · M플러스 = 영업기회 성공 + 현장 일별 실적 건수</div>
   </div>
   ${ftr(sn)}
 </div>`
@@ -2440,7 +2440,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
         </tr>
       </tbody>
     </table>
-    <div style="margin-top:9px;font-size:11px;color:#94a3b8">※ 팀 실적에는 <b style="color:#7c3aed">M플러스 현장 실적 포함</b> (MM 개인 귀속 불가 → 다음 장 MM별 표와 차이 발생)</div>
+    <div style="margin-top:9px;font-size:11px;color:#94a3b8">※ <b style="color:#7c3aed">M플러스 현장 실적 포함</b> (일별 실적 1건 = 활동·성공 1건, 회선은 실적 수량)</div>
   </div>
   ${ftr(sn)}
 </div>`
@@ -2491,7 +2491,7 @@ function buildSlideHTML({ period, today, yearStr, teams, projects, allMM, topMM,
       </tbody>
     </table>
     ${rows.length>15?`<div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:4px">외 ${rows.length-15}명</div>`:''}
-    <div style="margin-top:9px;font-size:11px;color:#94a3b8">※ MM 개인 귀속 실적만 집계 · <b style="color:#7c3aed">M플러스 현장 실적 제외</b>(팀 단위 귀속) · 월평균 = 누적 성공 ÷ ${nMon}개월</div>
+    <div style="margin-top:9px;font-size:11px;color:#94a3b8">※ <b style="color:#7c3aed">M플러스 현장 실적 포함</b>(현장 등록 MM 귀속) · 월평균 = 누적 성공 ÷ ${nMon}개월</div>
   </div>
   ${ftr(sn)}
 </div>`
@@ -4602,6 +4602,16 @@ function doPrint(){
                   const _selUsers = myUsers.filter(u=>_selTeamIds.has(u.team_id))
                   const _selNames = _selUsers.map(u=>u.name)
                   const _selUnames = _selUsers.map(u=>u.username)
+                  // M플러스 현장 일별 실적 → 성과 반영용 레코드 (회선 1개 이상인 실적 1건 = 활동 1 · 성공 1, 등록 MM 귀속)
+                  const _mpRecs = []
+                  mDiscovery.forEach(m=>{
+                    try{ JSON.parse(m.daily_records||'[]').forEach(r=>{
+                      const net=Number(r.net||0), tv=Number(r.tv||0), rw=Number(r.renew||0)
+                      const mob=Number(r.wireChange||0)+Number(r.mnp||0)+Number(r.second||0)
+                      if(net+tv+rw+mob<=0) return
+                      _mpRecs.push({ t:_ms(r.date), team_id:m.team_id, by:m.registered_by, pc:{'인터넷':net,'TV-M':tv,'약정갱신':rw,'모바일':mob} })
+                    })}catch{}
+                  })
                   const monthlySeries = []
                   for (let mo = _startMonth; mo <= _nowM; mo++) {
                     const ms = new Date(curYear, mo-1, 1).getTime()
@@ -4626,10 +4636,12 @@ function doPrint(){
                     // 프로젝트(테마)별 성공
                     const byProj = {}
                     ;[1,2,3,4,5].forEach(pid=>{ byProj[pid] = suc.filter(l=>Number(l.project_type||0)===pid).length })
-                    byProj[5] = (byProj[5]||0)   // M플러스 영업기회 기준
+                    const mpCnt = _mpRecs.filter(r=>_selTeamIds.has(r.team_id) && r.t>=ms && r.t<=me).length
+                    byProj[5] = (byProj[5]||0) + mpCnt   // M플러스: 영업기회 성공 + 현장 실적 건수
+                    const _act = all.length + mpCnt, _suc = suc.length + mpCnt
                     monthlySeries.push({
-                      month: mo, act: all.length, success: suc.length,
-                      rate: all.length>0 ? Math.round(suc.length/all.length*100) : 0,
+                      month: mo, act: _act, success: _suc,
+                      rate: _act>0 ? Math.round(_suc/_act*100) : 0,
                       prodCounts: pcM, mp: { net:mpNet, tv:mpTv, renew:mpRw, mob:mpMob, total:mpNet+mpTv+mpRw+mpMob },
                       byProj
                     })
@@ -4660,18 +4672,21 @@ function doPrint(){
                       })}catch{}
                     })
                     pc = mergeProdCounts(pc, mpPc)
+                    const mpCntT = _mpRecs.filter(r=>r.team_id===acc.team_id && r.t>=_anStart && r.t<=_anEnd).length
                     return { label: acc.team_label||acc.name||'팀', mm: tm.length,
-                      annual: { actAll: all.length, success: suc.length, prodCounts: pc } }
+                      annual: { actAll: all.length + mpCntT, success: suc.length + mpCntT, prodCounts: pc } }
                   })
-                  // MM별 (M플러스 제외 — 개인 귀속 불가)
+                  // MM별 (M플러스 포함 — 현장 등록 MM(registered_by)에게 귀속)
                   // 선택된 팀(slideAccs) 소속 MM만 대상 — 팀별 표와 동일 범위
                   const annualMMs = _selUsers.map(u => {
                     const acc2 = adminAccounts.find(a=>a.team_id===u.team_id)
                     const ul = leads.filter(l=>l.assigned_to===u.name && l.activity_status && l.activity_status!=='미처리' && _inAnnual(l.activity_at||l.created_at))
                     const ud = directLeads.filter(l=>l.mm_username===u.username && _inAnnual(l.activity_at||l.created_at))
                     const all=[...ul,...ud], suc=all.filter(l=>l.activity_status==='성공')
+                    const myMp = _mpRecs.filter(r=>r.by===u.name && r.t>=_anStart && r.t<=_anEnd)
+                    const pcU = myMp.reduce((acc,r)=>mergeProdCounts(acc,r.pc), calcProdCounts(suc))
                     return { name:u.name, team:acc2?.team_label||'-',
-                      annual: { actAll: all.length, success: suc.length, prodCounts: calcProdCounts(suc) } }
+                      annual: { actAll: all.length + myMp.length, success: suc.length + myMp.length, prodCounts: pcU } }
                   })
 
                   const html = buildSlideHTML({ _debug: dbgInfo, reportMode: annualRef.current?'annual':(_isPastMonth?'past':'current'),
