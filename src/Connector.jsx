@@ -1071,6 +1071,7 @@ export default function Connector({ onBack, initialTab }) {
   const [qrView, setQrView] = useState('overview')
   const [showQrForm, setShowQrForm] = useState(false)
   const [qrForm, setQrForm] = useState({ username:'', password:'', name:'', team_id:'' })
+  const [rawBusy, setRawBusy] = useState(false)
   const [slideMonth, setSlideMonth] = useState(new Date().getMonth()+1)  // 슬라이드 대상 월  // [] = 전체 선택
   const annualRef = useRef(false)   // 연간 누계 전용 보고서 여부 (즉시 반영 위해 ref)
   const [workDaysEdit, setWorkDaysEdit] = useState(null)  // 편집 중인 값
@@ -4744,6 +4745,26 @@ function doPrint(){
                 </button>
                 <div style={{ fontSize: '11.5px', color: C.sub, marginTop: '6px', lineHeight: 1.5 }}>
                   ※ 연간 누계 보고서: 위에서 선택한 <b>대상 월까지의 누계</b>(4월~선택월) 기준으로 팀·MM·테마·상품별 세부 실적을 정리합니다.
+                </div>
+                {/* 원시데이터 엑셀 */}
+                <button disabled={rawBusy} onClick={async () => {
+                    setRawBusy(true)
+                    try {
+                      let accs = adminAccounts
+                      if (!accs?.length) accs = await db.get('admin_accounts', 'select=team_id,team_label&role=eq.team').catch(() => [])
+                      const teamLabels = Object.fromEntries((accs || []).filter(a => a.team_id).map(a => [a.team_id, a.team_label || a.team_id]))
+                      const { exportRawExcel } = await import('./exportRaw.js')
+                      const r = await exportRawExcel({ users, leads, directLeads, mDiscovery, teamLabels,
+                        year: new Date().getFullYear(), startMonth: 4, endMonth: slideMonth || (new Date().getMonth() + 1) })
+                      t2('원시데이터 다운로드 완료 (성과 ' + r.perf + '행 · 활동 ' + r.act + '행)')
+                    } catch (e) { t2('엑셀 생성 실패: ' + (e?.message || e)) }
+                    setRawBusy(false)
+                  }}
+                  style={{ width: '100%', marginTop: '9px', background: rawBusy ? '#94a3b8' : '#15803d', border: 'none', color: '#fff', padding: '13px', borderRadius: '10px', fontSize: '15px', fontWeight: '900', cursor: rawBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
+                  {rawBusy ? '⏳ 엑셀 생성 중...' : '📗 원시데이터 엑셀 다운로드 (.xlsx)'}
+                </button>
+                <div style={{ fontSize: '11.5px', color: C.sub, marginTop: '6px', lineHeight: 1.5 }}>
+                  ※ 시트: MM별요약(4월~선택월) · 성과_상품별(성공 1건×상품 1개=1행) · 활동_전체 · M플러스_일별 · 코드표 — 피벗/SUMIFS로 개인별 실적표 작성용
                 </div>
               </div>
 
